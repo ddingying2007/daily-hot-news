@@ -1,34 +1,23 @@
-name: Daily Hot News
-
+name: Daily News Auto Push
 on:
   schedule:
-    - cron: '0 0 * * *'  # 每天UTC 0点（北京时间8点）
+    - cron: '0 0 * * *'  # 每天UTC时间0点（北京时间8点）
   workflow_dispatch:
 
 jobs:
   send-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-
-      - name: Send hot news
-        env:
-          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-        run: |
-          echo "=== 开始执行 ==="
-          echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
-          python hot_news.py
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - name: Install dependencies
+      run: |
+        pip install requests beautifulsoup4 lxml
+    - name: Send daily news
+      env:
+        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+      run: python hot_news.py
