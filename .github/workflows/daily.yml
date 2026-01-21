@@ -8,7 +8,7 @@ on:
 jobs:
   send-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 10  # 设置超时时间
+    timeout-minutes: 10
     
     steps:
       - name: Checkout code
@@ -21,11 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests==2.31.0
-          pip install beautifulsoup4==4.12.2
-          pip install lxml==4.9.3
-          pip install html5lib==1.1
-          pip install tenacity==8.2.2
+          pip install -r requirements.txt
 
       - name: Send hot news
         env:
@@ -33,7 +29,6 @@ jobs:
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         run: |
-          echo "📅 开始执行每日新闻任务..."
+          echo "=== 开始执行 ==="
           echo "时间: $(date '+%Y-%m-%d %H:%M:%S')"
-          echo "Python版本: $(python --version)"
           python hot_news.py
