@@ -8,25 +8,24 @@ on:
 jobs:
   send-news:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-        
-    - name: Install dependencies
-      run: |
-        pip install requests
-        pip install beautifulsoup4
-        pip install lxml
-      
-    - name: Send hot news
-      env:
-        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
-        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-      run: python hot_news.py
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+          pip install beautifulsoup4
+          pip install lxml
+
+      - name: Send hot news
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        run: python hot_news.py
