@@ -1,0 +1,173 @@
+# config.yaml - 新闻聚合系统配置文件
+# 更新时间：2026-01-21
+
+app:
+  name: "每日新闻聚合系统"
+  version: "2.0.0"
+  author: "GitHub Actions Bot"
+  
+schedule:
+  time: "08:00"  # 北京时间
+  timezone: "Asia/Shanghai"
+  
+email:
+  subject_template: "📰 每日新闻速递 {date}"
+  from_name: "每日新闻机器人"
+  smtp:
+    server: "smtp.qq.com"
+    port: 587
+    timeout: 10
+  
+news_sources:
+  # ========== 时政类 ==========
+  people:
+    enabled: true
+    name: "人民网"
+    category: "时政"
+    url: "http://www.people.com.cn/"
+    selector: ".news_box .news a, .rmw_list a, .hdNews a"
+    limit: 10
+    timeout: 10
+    priority: 1
+    
+  xinhua:
+    enabled: true
+    name: "新华网"
+    category: "时政"
+    url: "http://www.xinhuanet.com/"
+    selector: ".tit, .news-item h3, .hdNews a"
+    limit: 10
+    timeout: 10
+    priority: 2
+    
+  thepaper:
+    enabled: true
+    name: "澎湃新闻"
+    category: "时政"
+    url: "https://www.thepaper.cn/"
+    selector: ".news_tu h2 a, .newscontent h2 a, .pdtt_t a"
+    limit: 10
+    timeout: 10
+    priority: 3
+    
+  # ========== 热点类 ==========
+  weibo:
+    enabled: true
+    name: "微博热搜"
+    category: "热点"
+    url: "https://weibo.com/ajax/side/hotSearch"
+    api: true
+    json_path: "$.data.realtime[:15]"
+    limit: 15
+    timeout: 10
+    priority: 1
+    
+  zhihu:
+    enabled: true
+    name: "知乎热榜"
+    category: "热点"
+    url: "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50"
+    api: true
+    json_path: "$.data[:15]"
+    limit: 15
+    timeout: 10
+    priority: 2
+    
+  baidu:
+    enabled: true
+    name: "百度热搜"
+    category: "热点"
+    url: "https://top.baidu.com/board?tab=realtime"
+    selector: ".c-single-text-ellipsis"
+    limit: 15
+    timeout: 10
+    priority: 3
+    
+  toutiao:
+    enabled: true
+    name: "今日头条"
+    category: "热点"
+    url: "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
+    api: true
+    json_path: "$.data[:15]"
+    limit: 15
+    timeout: 10
+    priority: 4
+    
+  sina:
+    enabled: true
+    name: "新浪新闻"
+    category: "热点"
+    url: "https://news.sina.com.cn/"
+    selector: ".blk122, .news-item h2 a, .news-top a"
+    limit: 10
+    timeout: 10
+    priority: 5
+    
+  netease:
+    enabled: true
+    name: "网易新闻"
+    category: "热点"
+    url: "https://news.163.com/"
+    selector: ".news_title h3 a, .ndi_main a, .top_news_tt a"
+    limit: 10
+    timeout: 10
+    priority: 6
+    
+  # ========== 科技类 ==========
+  ithome:
+    enabled: true
+    name: "IT之家"
+    category: "科技"
+    url: "https://www.ithome.com/"
+    selector: ".title a, .news_title a, .bl a"
+    limit: 15
+    timeout: 10
+    priority: 1
+
+categories:
+  时政:
+    icon: "🏛️"
+    color: "#dc3545"
+    keywords: ["外交", "国防", "政府", "会议", "政策", "法律", "法规", "领导人", "国务院", "外交部"]
+    
+  经济:
+    icon: "📈"
+    color: "#28a745"
+    keywords: ["经济", "股市", "金融", "投资", "GDP", "消费", "贸易", "货币", "央行", "银行", "证券", "基金"]
+    
+  民生:
+    icon: "🏠"
+    color: "#17a2b8"
+    keywords: ["民生", "教育", "医疗", "社保", "就业", "住房", "养老", "交通", "环保", "食品安全", "疫情防控"]
+    
+  科技:
+    icon: "💻"
+    color: "#ffc107"
+    keywords: ["AI", "人工智能", "芯片", "5G", "互联网", "科技", "数码", "手机", "电脑", "软件", "游戏", "科学", "研发"]
+    
+  热点:
+    icon: "🔥"
+    color: "#6f42c1"
+    keywords: []  # 默认分类
+
+keywords_classification:
+  enable: true
+  min_match: 1  # 最少匹配关键词数量
+  
+user_agents:
+  - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+  - "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0"
+
+headers:
+  accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+  accept_language: "zh-CN,zh;q=0.9,en;q=0.8"
+  accept_encoding: "gzip, deflate, br"
+
+settings:
+  request_delay: 1.5  # 请求间隔（秒）
+  max_retries: 3  # 最大重试次数
+  timeout: 15  # 请求超时时间
+  log_level: "INFO"  # 日志级别
+  enable_proxy: false  # 是否启用代理
