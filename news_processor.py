@@ -15,27 +15,25 @@ class NewsProcessor:
         
         for source_id, data in all_news.items():
             source_config = self.config.get_source(source_id)
-            base_category = data['category'] if data.get('category') else '热点'
+            base_category = data.get('category', '热点')
             
             for news_item in data['news']:
+                if '抓取失败' in news_item:
+                    continue
+                    
                 clean_title = self._clean_title(news_item)
-                if not clean_title or clean_title == '数据获取失败':
+                if not clean_title or len(clean_title) < 3:
                     continue
                 
                 # 确定最终分类
-                final_category = self._determine_category(
-                    clean_title, 
-                    base_category,
-                    source_config
-                )
+                final_category = self._determine_category(clean_title, base_category)
                 
                 # 添加到对应分类
                 if final_category in categorized:
                     categorized[final_category].append({
                         'source': data['name'],
                         'title': clean_title,
-                        'original': news_item,
-                        'source_category': base_category
+                        'original': news_item
                     })
         
         # 每个分类只保留前5条
@@ -47,14 +45,13 @@ class NewsProcessor:
     def _clean_title(self, title: str) -> str:
         """清洗标题"""
         # 移除序号和热度标签
-        clean = re.sub(r'^\d+\.\s*', '', title)  # 移除开头的序号
-        clean = re.sub(r'\s*🔥\d+w', '', clean)  # 移除热度标签
+        clean = re.sub(r'^\d+\.\s*', '', title)
+        clean = re.sub(r'\s*🔥\d+\w*', '', clean)
         clean = clean.strip()
         return clean
     
-    def _determine_category(self, title: str, base_category: str, source_config) -> str:
+    def _determine_category(self, title: str, base_category: str) -> str:
         """确定新闻分类"""
-        # 如果有明确的基础分类且不是"热点"，直接使用
         if base_category != '热点':
             return base_category
         
@@ -63,10 +60,10 @@ class NewsProcessor:
             if category_name == '热点':
                 continue
             
-            # 检查关键词匹配
             keywords = category_config.keywords
-            if keywords and any(keyword in title for keyword in keywords):
-                return category_name
+            if keywords:
+                for keyword in keywords:
+                    if keyword in title:
+                        return category_name
         
-        # 默认返回"热点"
         return '热点'
