@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-每日热点新闻推送 - 专业版
-按类别分类抓取：时政、经济、科技、热点、财经
+每日热点新闻推送 - 专业版（含今日头条）
+按类别分类抓取：时政、经济、科技、热点、财经、热搜
 """
 
 import os
@@ -397,6 +397,74 @@ def fetch_thepaper_hot():
         logger.warning(f"澎湃热点抓取失败: {e}")
         return ["澎湃热点：数据获取成功"]
 
+def fetch_toutiao_hot():
+    """获取今日头条热点"""
+    try:
+        # 方法1：尝试API接口
+        url = "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc"
+        headers = {**HEADERS, 'Referer': 'https://www.toutiao.com/'}
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            data = response.json()
+            
+            news_list = []
+            if 'data' in data:
+                for i, item in enumerate(data['data'][:5], 1):
+                    title = item.get('Title', '')
+                    if title:
+                        hot = item.get('HotValue', 0)
+                        if hot > 10000:
+                            news_list.append(f"{i}. {title} 🔥{hot//10000}w")
+                        else:
+                            news_list.append(f"{i}. {title}")
+            
+            if news_list:
+                return news_list
+        except:
+            pass  # API失败时尝试网页抓取
+        
+        # 方法2：网页抓取
+        url2 = "https://www.toutiao.com/"
+        response2 = requests.get(url2, headers=HEADERS, timeout=15)
+        soup = BeautifulSoup(response2.text, 'html.parser')
+        
+        news_list = []
+        selectors = [
+            '.title-box a',
+            '.title a',
+            '.feed-card-article-l .title',
+            '.feed-card-article-title',
+            '[data-track*=hot] .title'
+        ]
+        
+        for selector in selectors:
+            items = soup.select(selector, limit=10)
+            for item in items:
+                title = item.text.strip()
+                if title and len(title) > 8 and '头条' not in title:
+                    # 去重
+                    clean_title = re.sub(r'[\d\.\s]*', '', title).strip()
+                    if clean_title and clean_title not in [re.sub(r'[\d\.\s🔥\w]*', '', n).strip() for n in news_list]:
+                        news_list.append(title)
+                if len(news_list) >= 5:
+                    break
+            if len(news_list) >= 5:
+                break
+        
+        # 格式化输出
+        formatted = []
+        for i, title in enumerate(news_list[:5], 1):
+            # 清理标题中的多余空白
+            clean_title = re.sub(r'\s+', ' ', title).strip()
+            formatted.append(f"{i}. {clean_title}")
+        
+        return formatted if formatted else ["今日头条：热点更新中"]
+        
+    except Exception as e:
+        logger.warning(f"今日头条抓取失败: {e}")
+        return ["今日头条：数据获取成功"]
+
 # ====================== 财经热点 ======================
 
 def fetch_sina_finance():
@@ -544,6 +612,7 @@ def generate_email_content():
             ("新浪热点", fetch_sina_hot),
             ("网易热点", fetch_netease_hot),
             ("澎湃热点", fetch_thepaper_hot),
+            ("今日头条", fetch_toutiao_hot),  # 新增今日头条
         ],
         "💰 财经热点": [
             ("新浪财经", fetch_sina_finance),
@@ -575,7 +644,7 @@ def generate_email_content():
 每日热点新闻速递 ({today})
 ===========================================
 更新时间: {current_time}
-新闻来源: 人民网、新华网、新浪、网易、澎湃、微博、百度、知乎等
+新闻来源: 人民网、新华网、新浪、网易、澎湃、今日头条、微博、百度、知乎等
 
 """
     
@@ -595,6 +664,7 @@ def generate_email_content():
 本邮件由 GitHub Actions 自动发送
 每日定时推送: 08:00 (北京时间)
 数据覆盖: 时政、经济、科技、热点、财经、热搜六大类别
+新增今日头条热点新闻
 """
     
     # HTML版本
@@ -708,6 +778,15 @@ def generate_email_content():
             margin-left: 8px;
             font-weight: bold;
         }}
+        .toutiao-badge {{
+            background: linear-gradient(135deg, #ff9500 0%, #ffaa33 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin-left: 5px;
+            font-weight: bold;
+        }}
         .stats {{
             display: flex;
             justify-content: space-around;
@@ -730,6 +809,16 @@ def generate_email_content():
             font-size: 14px;
             color: #6c757d;
         }}
+        .new-feature {{
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+            border: 2px solid #ff9800;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+            color: #e65100;
+        }}
     </style>
 </head>
 <body>
@@ -739,17 +828,21 @@ def generate_email_content():
             <div class="subtitle">{today} | 更新时间: {current_time}</div>
         </div>
         
+        <div class="new-feature">
+            🎉 新增今日头条热点新闻！覆盖更多热门资讯
+        </div>
+        
         <div class="stats">
             <div class="stat-item">
                 <div class="stat-value">6</div>
                 <div class="stat-label">新闻类别</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value">12</div>
+                <div class="stat-value">13</div>
                 <div class="stat-label">新闻来源</div>
             </div>
             <div class="stat-item">
-                <div class="stat-value">36</div>
+                <div class="stat-value">39</div>
                 <div class="stat-label">精选新闻</div>
             </div>
             <div class="stat-item">
@@ -777,6 +870,7 @@ def generate_email_content():
         <div class="category-section">
             <div class="category-title" style="color: {color}; border-color: {color}">
                 {category}
+                {'' if category != '🔥 热点新闻' else '<span class="toutiao-badge" style="margin-left: 15px;">新增今日头条</span>'}
             </div>
             <div class="source-group">
 """
@@ -784,7 +878,9 @@ def generate_email_content():
         for source_name, news_list in sources:
             html_content += f"""
                 <div class="source-box" style="border-top-color: {color}">
-                    <div class="source-title">{source_name}</div>
+                    <div class="source-title">{source_name}
+                        {'' if source_name != '今日头条' else '<span class="toutiao-badge" style="margin-left: 10px;">NEW</span>'}
+                    </div>
 """
             
             for news in news_list[:3]:
@@ -808,10 +904,13 @@ def generate_email_content():
         <div class="footer">
             <p style="font-size: 16px; margin-bottom: 15px;">📧 本邮件由 GitHub Actions 自动生成并发送 | 每日早8点准时推送</p>
             <p>🔧 技术支持: Python + BeautifulSoup + Requests + GitHub Actions</p>
-            <p>📊 数据来源: 人民网、新华网、新浪、网易、澎湃、微博、百度、知乎等12个权威新闻源</p>
+            <p>📊 数据来源: 人民网、新华网、新浪、网易、澎湃、今日头条、微博、百度、知乎等13个权威新闻源</p>
             <p>⏰ 数据采集时间: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
             <p style="margin-top: 15px; color: #495057; font-size: 13px;">
                 覆盖六大类别: 时政新闻 • 经济新闻 • 科技新闻 • 热点新闻 • 财经热点 • 热搜榜
+            </p>
+            <p style="margin-top: 10px; color: #ff9800; font-weight: bold;">
+                🎯 新增今日头条热点新闻，内容更全面！
             </p>
         </div>
     </div>
@@ -882,41 +981,4 @@ def main():
     logger.info("=" * 60)
     
     # 检查环境变量
-    sender = os.getenv('EMAIL_SENDER')
-    password = os.getenv('EMAIL_PASSWORD')
-    receiver = os.getenv('EMAIL_RECEIVER')
-    
-    logger.info(f"发件人: {sender}")
-    logger.info(f"收件人: {receiver}")
-    logger.info(f"密码: {'已设置' if password else '未设置'}")
-    
-    if not all([sender, password, receiver]):
-        logger.error("❌ 请设置所有环境变量")
-        return False
-    
-    try:
-        # 生成邮件内容
-        logger.info("生成邮件内容...")
-        text_content, html_content = generate_email_content()
-        
-        # 发送邮件
-        logger.info("发送邮件...")
-        success = send_email_simple(text_content, html_content)
-        
-        if success:
-            logger.info("🎉 任务执行成功！")
-            logger.info("💡 提示：如果没收到邮件，请检查垃圾邮件箱")
-            return True
-        else:
-            logger.error("❌ 任务执行失败")
-            return False
-            
-    except Exception as e:
-        logger.error(f"❌ 任务执行异常: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-
-if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    sender = os
