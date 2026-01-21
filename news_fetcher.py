@@ -6,13 +6,15 @@ from bs4 import BeautifulSoup
 from typing import List, Dict, Any
 import logging
 from jsonpath_ng import parse
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
 class NewsFetcher:
     def __init__(self, config):
         self.config = config
-        
+    
+    @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=10))
     def fetch_news(self, source_config) -> List[str]:
         """根据配置抓取新闻"""
         try:
@@ -22,7 +24,7 @@ class NewsFetcher:
                 return self._fetch_html_news(source_config)
         except Exception as e:
             logger.error(f"抓取 {source_config.name} 失败: {e}")
-            return []
+            return [f"{source_config.name}: 抓取失败"]
     
     def _fetch_api_news(self, source_config) -> List[str]:
         """抓取API类型的新闻"""
@@ -36,13 +38,16 @@ class NewsFetcher:
         
         data = response.json()
         
-        # 使用jsonpath提取数据
+        news_list = []
         if source_config.json_path:
-            jsonpath_expr = parse(source_config.json_path)
-            matches = [match.value for match in jsonpath_expr.find(data)]
-            news_list = self._parse_api_data(matches, source_config)
+            try:
+                jsonpath_expr = parse(source_config.json_path)
+                matches = [match.value for match in jsonpath_expr.find(data)]
+                news_list = self._parse_api_data(matches, source_config.id)
+            except:
+                news_list = self._parse_api_data(data, source_config.id)
         else:
-            news_list = self._parse_api_data(data, source_config)
+            news_list = self._parse_api_data(data, source_config.id)
         
         return news_list[:source_config.limit]
     
@@ -60,24 +65,27 @@ class NewsFetcher:
         items = soup.select(source_config.selector)
         
         news_list = []
-        for i, item in enumerate(items[:source_config.limit * 2], 1):
+        count = 0
+        for item in items:
+            if count >= source_config.limit * 2:
+                break
+                
             title = item.text.strip()
-            if title and len(title) > 3:
-                # 添加排名
-                news_list.append(f"{i}. {title}")
+            if title and len(title) > 3 and not title.startswith('http'):
+                count += 1
+                news_list.append(f"{count}. {title}")
         
         return news_list[:source_config.limit]
     
-    def _parse_api_data(self, data, source_config) -> List[str]:
+    def _parse_api_data(self, data, source_id: str) -> List[str]:
         """解析API数据"""
         news_list = []
         
         if isinstance(data, list):
             for i, item in enumerate(data, 1):
-                title = self._extract_title(item, source_config.id)
+                title = self._extract_title(item, source_id)
                 if title:
-                    # 添加热度信息（如果有）
-                    hot_text = self._extract_hot(item, source_config.id)
+                    hot_text = self._extract_hot(item, source_id)
                     if hot_text:
                         news_list.append(f"{i}. {title} {hot_text}")
                     else:
@@ -88,7 +96,6 @@ class NewsFetcher:
     def _extract_title(self, item, source_id: str) -> str:
         """提取标题"""
         if isinstance(item, dict):
-            # 根据不同的API返回结构提取标题
             if source_id == 'zhihu':
                 return item.get('target', {}).get('title', '')
             elif source_id == 'weibo':
@@ -108,6 +115,8 @@ class NewsFetcher:
                 hot = item.get('num', 0)
                 if hot > 10000:
                     return f"🔥{hot//10000}w"
+                elif hot > 0:
+                    return f"🔥{hot}"
             elif source_id == 'toutiao':
                 hot = item.get('HotValue', 0)
                 if hot > 10000:
@@ -115,10 +124,12 @@ class NewsFetcher:
         return ''
     
     def _get_headers(self) -> Dict[str, str]:
-        """获取随机User-Agent"""
-        user_agents = self.config.config_data.get('user_agents', [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ])
+        """获取请求头"""
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
+        ]
         
         return {
             'User-Agent': random.choice(user_agents),
